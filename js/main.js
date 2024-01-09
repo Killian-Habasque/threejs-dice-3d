@@ -1,6 +1,7 @@
 import * as CANNON from 'https://cdn.skypack.dev/cannon-es';
 
 import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import * as BufferGeometryUtils from 'three/addons/utils/BufferGeometryUtils.js';
 import * as dat from 'dat.gui';
 
@@ -13,11 +14,18 @@ const rollBtn = document.querySelector('#roll-btn');
 let renderer, scene, camera, diceMesh, physicsWorld;
 
 const params = {
-    numberOfDice: 2,
+    numberOfDice: 5,
     segments: 40,
     edgeRadius: .07,
     notchRadius: .12,
     notchDepth: .1,
+    rectangle: {
+        width: 2,
+        height: 2,
+        positionX: 2,
+        positionY: -6,
+        positionZ: -1.5,
+    },
 };
 
 const diceArray = [];
@@ -28,7 +36,7 @@ initScene();
 window.addEventListener('resize', updateSceneSize);
 // window.addEventListener('dblclick', throwDice);
 rollBtn.addEventListener('click', throwDice);
-
+var rectangleMesh;
 function initScene() {
 
     renderer = new THREE.WebGLRenderer({
@@ -42,8 +50,24 @@ function initScene() {
     scene = new THREE.Scene();
 
     camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, .1, 300)
-    camera.position.set(0, 15, 15);
+    camera.position.set(0, 7, 10);
     camera.rotation.set(18, 0, 0);
+
+    const controls = new OrbitControls(camera, renderer.domElement)
+    controls.enableDamping = true
+    controls.target.y = 0.5
+
+    // Mon code 
+    const perspectiveCameraFolder = gui.addFolder('Camera');
+    perspectiveCameraFolder.add(camera.position, 'x', -20, 20, 0.1);
+    perspectiveCameraFolder.add(camera.position, 'y', -20, 20, 0.1);
+    perspectiveCameraFolder.add(camera.position, 'z', -20, 20, 0.1);
+    perspectiveCameraFolder.add(camera.rotation, 'x', -20, 20, 0.1);
+    perspectiveCameraFolder.add(camera.rotation, 'y', -20, 20, 0.1);
+    perspectiveCameraFolder.add(camera.rotation, 'z', -20, 20, 0.1);
+    perspectiveCameraFolder.open()
+
+
 
     updateSceneSize();
 
@@ -65,19 +89,17 @@ function initScene() {
         addDiceEvents(diceArray[i]);
     }
 
-    let scaleToggle = false;
+    const rectangleFolder = gui.addFolder('Rectangle');
+    rectangleFolder.add(params.rectangle, 'width', 1, 5).onChange(updateRectangle);
+    rectangleFolder.add(params.rectangle, 'height', 1, 5).onChange(updateRectangle);
+    rectangleFolder.add(params.rectangle, 'positionX', -10, 10).onChange(updateRectangle);
+    rectangleFolder.add(params.rectangle, 'positionY', -10, 10).onChange(updateRectangle);
+    rectangleFolder.add(params.rectangle, 'positionZ', -10, 10).onChange(updateRectangle);
+
+    createOrUpdateRectangle();
+
 
     throwDice();
-
-    // Mon code 
-    const perspectiveCameraFolder = gui.addFolder('Camera');
-    perspectiveCameraFolder.add(camera.position, 'x', 0, 50);
-    perspectiveCameraFolder.add(camera.position, 'y', 0, 50);
-    perspectiveCameraFolder.add(camera.position, 'z', 0, 50);
-    perspectiveCameraFolder.add(camera.rotation, 'x', 0, 90, 1);
-    perspectiveCameraFolder.add(camera.rotation, 'y', 0, 50);
-    perspectiveCameraFolder.add(camera.rotation, 'z', 0, 50);
-    perspectiveCameraFolder.open()
 
     window.addEventListener('click', onDocumentMouseDown, false);
 
@@ -90,32 +112,66 @@ function initScene() {
         mouse.y = - (event.clientY / renderer.domElement.clientHeight) * 2 + 1;
         raycaster.setFromCamera(mouse, camera);
         console.log(scene.children);
-        var intersects = raycaster.intersectObjects(scene.children,);
+        var intersects = raycaster.intersectObjects(scene.children);
         console.log(intersects);
-        if (intersects.length > 3) {
-            const selectedObject = intersects[0].object;
-    
-            if (selectedObject.parent && selectedObject.parent.children.length > 0) {
-                const parentObject = selectedObject.parent;
-    
-                for (let i = 0; i < parentObject.children.length; i++) {
-                    const child = parentObject.children[i];
-    
-                    if (scaleToggle) {
-                        child.position.set(0, 0, 0);
-                    } else {
-                        child.position.set(1.2, 1.2, 1.2);
+        if (intersects.length > 0) {
+            const selectedObject = intersects[0].object.parent;
+                // console.log(selectedObject)
+                if(selectedObject.type ==="Group") {
+                    selectedObject.callback()
+                    // Vérification si l'objet parent a des enfants
+                    if (selectedObject.children.length > 0) {
+                        // Parcourir tous les enfants de l'objet parent
+                        selectedObject.children.forEach(child => {
+                            if (child.scale.x === 1.2) {
+                                child.scale.set(1, 1, 1); // Changer l'échelle de l'enfant à 1
+                            } else {
+                                child.scale.set(1.2, 1.2, 1.2); // Changer l'échelle de l'enfant à 1.2
+                            }
+                        });
                     }
                 }
-    
-                scaleToggle = !scaleToggle;
-            }
         }
     }
 
     render();
 }
+function createOrUpdateRectangle() {
+   
+    const rectangleShape = new CANNON.Box(new CANNON.Vec3(params.rectangle.width * 0.5, params.rectangle.height * 0.5, 0.05));
+    if (!rectangleMesh) {
+        const geometry = new THREE.BoxGeometry(params.rectangle.width, params.rectangle.height, 0.1);
+        const material = new THREE.MeshStandardMaterial({ color: 0xff0000 });
 
+        rectangleMesh = new THREE.Mesh(geometry, material);
+        rectangleMesh.position.set(params.rectangle.positionX, params.rectangle.positionY, params.rectangle.positionZ);
+        scene.add(rectangleMesh);
+
+        //colision cannon
+        const body = new CANNON.Body({
+            mass: 1,
+            shape: new CANNON.Box(new CANNON.Vec3(params.rectangle.width, params.rectangle.height, 0.1)),
+            sleepTimeLimit: .1
+        });
+        physicsWorld.addBody(body);
+        
+        const rectangleBody = new CANNON.Body({
+            mass: 0, // Masse nulle pour un objet statique (mur, sol, etc.)
+            shape: rectangleShape,
+            position: new CANNON.Vec3(params.rectangle.positionX, params.rectangle.positionY, params.rectangle.positionZ),
+            quaternion: new CANNON.Quaternion()
+        });
+        physicsWorld.addBody(rectangleBody);
+    } else {
+        rectangleMesh.scale.set(params.rectangle.width, params.rectangle.height, 0.1);
+        rectangleMesh.position.set(params.rectangle.positionX, params.rectangle.positionY, params.rectangle.positionZ);
+    }
+}
+
+function updateRectangle() {
+    rectangleMesh.scale.set(params.rectangle.width, params.rectangle.height, 0.1);
+   rectangleMesh.position.set(params.rectangle.positionX, params.rectangle.positionY, params.rectangle.positionZ);
+}
 function initPhysics() {
     physicsWorld = new CANNON.World({
         allowSleep: true,
