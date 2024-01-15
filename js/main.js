@@ -4,6 +4,9 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import * as BufferGeometryUtils from 'three/addons/utils/BufferGeometryUtils.js';
 import * as dat from 'dat.gui';
+// import * as TWEEN from 'https://cdnjs.cloudflare.com/ajax/libs/tween.js/18.6.4/tween.esm.min.js';
+import * as TWEEN from 'https://cdn.skypack.dev/@tweenjs/tween.js';
+
 
 const gui = new dat.GUI();
 
@@ -12,7 +15,7 @@ const scoreResult = document.querySelector('#score-result');
 const rollBtn = document.querySelector('#roll-btn');
 
 let renderer, scene, camera, diceMesh, physicsWorld;
-
+const diceDebugFolder = gui.addFolder('Dice Debug');
 const params = {
     numberOfDice: 5,
     segments: 40,
@@ -20,11 +23,11 @@ const params = {
     notchRadius: .12,
     notchDepth: .1,
     rectangle: {
-        width: 2,
+        width: 10,
         height: 2,
         positionX: 2,
         positionY: -6,
-        positionZ: -1.5,
+        positionZ: -5,
     },
 };
 
@@ -116,45 +119,55 @@ function initScene() {
         console.log(intersects);
         if (intersects.length > 0) {
             const selectedObject = intersects[0].object.parent;
-                // console.log(selectedObject)
-                if(selectedObject.type ==="Group") {
-                    selectedObject.callback()
-                    // Vérification si l'objet parent a des enfants
-                    if (selectedObject.children.length > 0) {
-                        // Parcourir tous les enfants de l'objet parent
-                        selectedObject.children.forEach(child => {
-                            if (child.scale.x === 1.2) {
-                                child.scale.set(1, 1, 1); // Changer l'échelle de l'enfant à 1
-                            } else {
-                                child.scale.set(1.2, 1.2, 1.2); // Changer l'échelle de l'enfant à 1.2
-                            }
-                        });
-                    }
+            // console.log(selectedObject)
+            if (selectedObject.type === "Group") {
+                selectedObject.callback()
+                // Vérification si l'objet parent a des enfants
+                if (selectedObject.children.length > 0) {
+                    // Parcourir tous les enfants de l'objet parent
+                    selectedObject.children.forEach(child => {
+                        selectedObject.rotation.set(0, 0, 0); 
+                        if (child.scale.x === 1.2) {
+                            child.scale.set(1, 1, 1); // Changer l'échelle de l'enfant à 1
+                        } else {
+                            console.log(selectedObject)
+                            
+                            child.scale.set(1.2, 1.2, 1.2); // Changer l'échelle de l'enfant à 1.2
+                        }
+                    });
                 }
+            }
         }
     }
 
     render();
 }
 function createOrUpdateRectangle() {
-   
+
     const rectangleShape = new CANNON.Box(new CANNON.Vec3(params.rectangle.width * 0.5, params.rectangle.height * 0.5, 0.05));
+
     if (!rectangleMesh) {
         const geometry = new THREE.BoxGeometry(params.rectangle.width, params.rectangle.height, 0.1);
-        const material = new THREE.MeshStandardMaterial({ color: 0xff0000 });
+        const material = new THREE.MeshStandardMaterial({
+            color: 0xff0000
+        });
 
         rectangleMesh = new THREE.Mesh(geometry, material);
+        var rectangleMesh2 = new THREE.Mesh(geometry, material);
+        var rectangleMesh3 = new THREE.Mesh(geometry, material);
+        rectangleMesh.receiveShadow = true;
         rectangleMesh.position.set(params.rectangle.positionX, params.rectangle.positionY, params.rectangle.positionZ);
+        rectangleMesh2.position.set(params.rectangle.positionX, params.rectangle.positionY, -params.rectangle.positionZ);
         scene.add(rectangleMesh);
-
+        scene.add(rectangleMesh2);
         //colision cannon
-        const body = new CANNON.Body({
-            mass: 1,
-            shape: new CANNON.Box(new CANNON.Vec3(params.rectangle.width, params.rectangle.height, 0.1)),
-            sleepTimeLimit: .1
-        });
-        physicsWorld.addBody(body);
-        
+        // const body = new CANNON.Body({
+        //     mass: 1,
+        //     shape: new CANNON.Box(new CANNON.Vec3(params.rectangle.width, params.rectangle.height, 0.1)),
+        //     sleepTimeLimit: .1
+        // });
+        // physicsWorld.addBody(body);
+
         const rectangleBody = new CANNON.Body({
             mass: 0, // Masse nulle pour un objet statique (mur, sol, etc.)
             shape: rectangleShape,
@@ -170,7 +183,7 @@ function createOrUpdateRectangle() {
 
 function updateRectangle() {
     rectangleMesh.scale.set(params.rectangle.width, params.rectangle.height, 0.1);
-   rectangleMesh.position.set(params.rectangle.positionX, params.rectangle.positionY, params.rectangle.positionZ);
+    rectangleMesh.position.set(params.rectangle.positionX, params.rectangle.positionY, params.rectangle.positionZ);
 }
 function initPhysics() {
     physicsWorld = new CANNON.World({
@@ -231,8 +244,9 @@ function createDice() {
     const body = new CANNON.Body({
         mass: 1,
         shape: new CANNON.Box(new CANNON.Vec3(.5, .5, .5)),
-        sleepTimeLimit: .1
+        sleepTimeLimit: .1,
     });
+    // body.initQuaternion = mesh.quaternion.clone();
     physicsWorld.addBody(body);
 
     return { mesh, body };
@@ -410,6 +424,7 @@ function render() {
         // dice.mesh.callback = function() { console.log("test"); }
     }
 
+    TWEEN.update();
     renderer.render(scene, camera);
     requestAnimationFrame(render);
 }
@@ -441,5 +456,58 @@ function throwDice() {
         );
         // d.mesh.callback = function() { console.log("test"); }
         d.body.allowSleep = true;
+
+
     });
+    setTimeout(() => {
+        alignDiceInLine();
+    }, 5000);
 }
+
+function alignDiceInLine() {
+    const alignmentDuration = 1.5; 
+
+    // Utilisation de Tween pour animer la position et la rotation des dés
+    diceArray.forEach((dice, index) => {
+        const targetPosition = new CANNON.Vec3(0 + index * 2, 0, 0); // Position cible en ligne
+
+        new TWEEN.Tween(dice.body.position)
+            .to({
+                x: targetPosition.x,
+                y: targetPosition.y,
+                z: targetPosition.z
+            }, alignmentDuration * 1000)
+            .easing(TWEEN.Easing.Quadratic.Out)
+            .start();
+
+
+        new TWEEN.Tween({ y: dice.mesh.rotation.y })
+            .to({ y: 0 }, alignmentDuration * 1000)
+            .easing(TWEEN.Easing.Quadratic.Out)
+            .onUpdate((obj) => {
+                dice.mesh.rotation.y = obj.y;
+                dice.mesh.rotation.reorder('YXZ'); 
+                dice.body.quaternion.copy(dice.mesh.quaternion);
+            })
+            .start();
+
+    });
+
+}
+
+
+
+
+diceArray.forEach((dice, index) => {
+    const diceFolder = diceDebugFolder.addFolder(`Dice ${index + 1}`);
+    diceFolder.add(dice.body.position, 'x').listen().name('Position X');
+    diceFolder.add(dice.body.position, 'y').listen().name('Position Y');
+    diceFolder.add(dice.body.position, 'z').listen().name('Position Z');
+    diceFolder.add(dice.mesh.rotation, 'x').listen().name('rotation X');
+    diceFolder.add(dice.mesh.rotation, 'y').listen().name('rotation Y');
+    diceFolder.add(dice.mesh.rotation, 'z').listen().name('rotation Z');
+    diceFolder.add(dice.body.quaternion, 'x').listen().name('Quaternion X');
+    diceFolder.add(dice.body.quaternion, 'y').listen().name('Quaternion Y');
+    diceFolder.add(dice.body.quaternion, 'z').listen().name('Quaternion Z');
+    diceFolder.add(dice.body.quaternion, 'w').listen().name('Quaternion W');
+});
