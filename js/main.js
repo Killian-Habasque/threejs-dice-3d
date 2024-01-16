@@ -29,7 +29,7 @@ const params = {
         positionZ: -5,
     },
 };
-
+let scoreGlobal = []
 const diceArray = [];
 
 initPhysics();
@@ -59,21 +59,7 @@ function initScene() {
     camera.position.set(0, 7, 10);
     camera.rotation.set(18, 0, 0);
 
-    const controls = new OrbitControls(camera, renderer.domElement)
-    controls.enableDamping = true
-    controls.target.y = 0.5
-
-    // Mon code 
-    const perspectiveCameraFolder = gui.addFolder('Camera');
-    perspectiveCameraFolder.add(camera.position, 'x', -20, 20, 0.1);
-    perspectiveCameraFolder.add(camera.position, 'y', -20, 20, 0.1);
-    perspectiveCameraFolder.add(camera.position, 'z', -20, 20, 0.1);
-    perspectiveCameraFolder.add(camera.rotation, 'x', -20, 20, 0.1);
-    perspectiveCameraFolder.add(camera.rotation, 'y', -20, 20, 0.1);
-    perspectiveCameraFolder.add(camera.rotation, 'z', -20, 20, 0.1);
-    perspectiveCameraFolder.open()
-
-
+    initDatGui();
 
     updateSceneSize();
 
@@ -95,56 +81,53 @@ function initScene() {
         addDiceEvents(diceArray[i]);
     }
 
-    const rectangleFolder = gui.addFolder('Rectangle');
-    rectangleFolder.add(params.rectangle, 'width', 1, 5).onChange(updateRectangle);
-    rectangleFolder.add(params.rectangle, 'height', 1, 5).onChange(updateRectangle);
-    rectangleFolder.add(params.rectangle, 'positionX', -10, 10).onChange(updateRectangle);
-    rectangleFolder.add(params.rectangle, 'positionY', -10, 10).onChange(updateRectangle);
-    rectangleFolder.add(params.rectangle, 'positionZ', -10, 10).onChange(updateRectangle);
 
     createOrUpdateRectangle();
-
 
     throwDice();
 
     window.addEventListener('click', onDocumentMouseDown, false);
 
+    render();
+}
 
+
+/*
+Evenement click sur la scene
+*/
+function onDocumentMouseDown(event) {
     var raycaster = new THREE.Raycaster();
     var mouse = new THREE.Vector2();
-    function onDocumentMouseDown(event) {
-        event.preventDefault();
-        mouse.x = (event.clientX / renderer.domElement.clientWidth) * 2 - 1;
-        mouse.y = - (event.clientY / renderer.domElement.clientHeight) * 2 + 1;
-        raycaster.setFromCamera(mouse, camera);
-        console.log(scene.children);
-        var intersects = raycaster.intersectObjects(scene.children);
-        console.log(intersects);
-        if (intersects.length > 0) {
-            const selectedObject = intersects[0].object.parent;
-            // console.log(selectedObject)
-            if (selectedObject.type === "Group") {
-                selectedObject.callback()
-                // Vérification si l'objet parent a des enfants
-                if (selectedObject.children.length > 0) {
-                    // Parcourir tous les enfants de l'objet parent
-                    selectedObject.children.forEach(child => {
-                        selectedObject.rotation.set(0, 0, 0); 
-                        if (child.scale.x === 1.2) {
-                            child.scale.set(1, 1, 1); // Changer l'échelle de l'enfant à 1
-                        } else {
-                            console.log(selectedObject)
-                            
-                            child.scale.set(1.2, 1.2, 1.2); // Changer l'échelle de l'enfant à 1.2
-                        }
-                    });
-                }
+    event.preventDefault();
+    mouse.x = (event.clientX / renderer.domElement.clientWidth) * 2 - 1;
+    mouse.y = - (event.clientY / renderer.domElement.clientHeight) * 2 + 1;
+    raycaster.setFromCamera(mouse, camera);
+    console.log(scene.children);
+    var intersects = raycaster.intersectObjects(scene.children);
+    console.log(intersects);
+    if (intersects.length > 0) {
+        const selectedObject = intersects[0].object.parent;
+        // console.log(selectedObject)
+        if (selectedObject.type === "Group") {
+            selectedObject.callback()
+            // Vérification si l'objet parent a des enfants
+            if (selectedObject.children.length > 0) {
+                // Parcourir tous les enfants de l'objet parent
+                selectedObject.children.forEach(child => {
+                    selectedObject.rotation.set(0, 0, 0);
+                    if (child.scale.x === 1.2) {
+                        child.scale.set(1, 1, 1); // Changer l'échelle de l'enfant à 1
+                    } else {
+                        console.log(selectedObject)
+
+                        child.scale.set(1.2, 1.2, 1.2); // Changer l'échelle de l'enfant à 1.2
+                    }
+                });
             }
         }
     }
-
-    render();
 }
+
 
 /*
 Création de rectangle pour collision
@@ -247,10 +230,10 @@ function createDiceMesh() {
     const diceMesh = new THREE.Group();
     const innerMesh = new THREE.Mesh(createInnerGeometry(), boxMaterialInner);
     let outerMesh = new THREE.Mesh(createBoxGeometry(), boxMaterialOuter);
-    // diceMesh.callback = function() { console.log("test");}
+
     outerMesh.castShadow = true;
     diceMesh.add(innerMesh, outerMesh);
-    // diceMesh.callback = function() { console.log("test"); }
+
 
 
     return diceMesh;
@@ -434,9 +417,15 @@ function addDiceEvents(dice) {
 Résultats score en texte
 */
 function showRollResults(score) {
+    scoreGlobal.push(score)
+
+    if (scoreGlobal.length == 5) {
+        alignDiceInLine();
+    }
     if (scoreResult.innerHTML === '') {
         scoreResult.innerHTML += score;
     } else {
+
         scoreResult.innerHTML += ('+' + score);
     }
 }
@@ -472,6 +461,7 @@ Lancer dés
 */
 function throwDice() {
     scoreResult.innerHTML = '';
+    scoreGlobal = [];
 
     diceArray.forEach((d, dIdx) => {
 
@@ -494,16 +484,20 @@ function throwDice() {
 
 
     });
-    setTimeout(() => {
-        alignDiceInLine();
-    }, 4000);
+    // while(scoreGlobal.length != 5) {
+    //     console.log(scoreGlobal.length)
+    // //     // setTimeout(() => {
+    // //     //     alignDiceInLine();
+    // //     // }, 2000);
+    // }
+
 }
 
 /*
 Alignement des dés après le lancer
 */
 function alignDiceInLine() {
-    const alignmentDuration = 1; 
+    const alignmentDuration = 1;
     const delayBetweenDice = 0.2;
     // Utilisation de Tween pour animer la position et la rotation des dés
     diceArray.forEach((dice, index) => {
@@ -526,7 +520,7 @@ function alignDiceInLine() {
             .delay(index * delayBetweenDice * 1000)
             .onUpdate((obj) => {
                 dice.mesh.rotation.y = obj.y;
-                dice.mesh.rotation.reorder('YXZ'); 
+                dice.mesh.rotation.reorder('YXZ');
                 dice.body.quaternion.copy(dice.mesh.quaternion);
             })
             .start();
@@ -536,18 +530,46 @@ function alignDiceInLine() {
 }
 
 
+/*
+Alignement des dés après le lancer
+*/
+function initDatGui() {
+
+    const controls = new OrbitControls(camera, renderer.domElement)
+    controls.enableDamping = true
+    controls.target.y = 0.5
+
+    const perspectiveCameraFolder = gui.addFolder('Camera');
+    perspectiveCameraFolder.add(camera.position, 'x', -20, 20, 0.1);
+    perspectiveCameraFolder.add(camera.position, 'y', -20, 20, 0.1);
+    perspectiveCameraFolder.add(camera.position, 'z', -20, 20, 0.1);
+    perspectiveCameraFolder.add(camera.rotation, 'x', -20, 20, 0.1);
+    perspectiveCameraFolder.add(camera.rotation, 'y', -20, 20, 0.1);
+    perspectiveCameraFolder.add(camera.rotation, 'z', -20, 20, 0.1);
+    perspectiveCameraFolder.open()
 
 
-diceArray.forEach((dice, index) => {
-    const diceFolder = diceDebugFolder.addFolder(`Dice ${index + 1}`);
-    diceFolder.add(dice.body.position, 'x').listen().name('Position X');
-    diceFolder.add(dice.body.position, 'y').listen().name('Position Y');
-    diceFolder.add(dice.body.position, 'z').listen().name('Position Z');
-    diceFolder.add(dice.mesh.rotation, 'x').listen().name('rotation X');
-    diceFolder.add(dice.mesh.rotation, 'y').listen().name('rotation Y');
-    diceFolder.add(dice.mesh.rotation, 'z').listen().name('rotation Z');
-    diceFolder.add(dice.body.quaternion, 'x').listen().name('Quaternion X');
-    diceFolder.add(dice.body.quaternion, 'y').listen().name('Quaternion Y');
-    diceFolder.add(dice.body.quaternion, 'z').listen().name('Quaternion Z');
-    diceFolder.add(dice.body.quaternion, 'w').listen().name('Quaternion W');
-});
+    const rectangleFolder = gui.addFolder('Rectangle');
+    rectangleFolder.add(params.rectangle, 'width', 1, 5).onChange(updateRectangle);
+    rectangleFolder.add(params.rectangle, 'height', 1, 5).onChange(updateRectangle);
+    rectangleFolder.add(params.rectangle, 'positionX', -10, 10).onChange(updateRectangle);
+    rectangleFolder.add(params.rectangle, 'positionY', -10, 10).onChange(updateRectangle);
+    rectangleFolder.add(params.rectangle, 'positionZ', -10, 10).onChange(updateRectangle);
+
+
+
+    diceArray.forEach((dice, index) => {
+        const diceFolder = diceDebugFolder.addFolder(`Dice ${index + 1}`);
+        diceFolder.add(dice.body.position, 'x').listen().name('Position X');
+        diceFolder.add(dice.body.position, 'y').listen().name('Position Y');
+        diceFolder.add(dice.body.position, 'z').listen().name('Position Z');
+        diceFolder.add(dice.mesh.rotation, 'x').listen().name('rotation X');
+        diceFolder.add(dice.mesh.rotation, 'y').listen().name('rotation Y');
+        diceFolder.add(dice.mesh.rotation, 'z').listen().name('rotation Z');
+        diceFolder.add(dice.body.quaternion, 'x').listen().name('Quaternion X');
+        diceFolder.add(dice.body.quaternion, 'y').listen().name('Quaternion Y');
+        diceFolder.add(dice.body.quaternion, 'z').listen().name('Quaternion Z');
+        diceFolder.add(dice.body.quaternion, 'w').listen().name('Quaternion W');
+    });
+}
+
