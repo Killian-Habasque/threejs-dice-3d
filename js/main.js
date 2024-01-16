@@ -384,44 +384,30 @@ function addDiceEvents(dice) {
 
             if (isZero(euler.x)) {
                 showRollResults(1);
-                dice.mesh.callback = function () { 
-                    console.log(1); 
-                    console.log(this)
-
-                    const targetPosition = new CANNON.Vec3(0, 0, -5); // Position cible en ligne
-
-                    new TWEEN.Tween(this.position)
-                    .to({
-                        x: targetPosition.x,
-                        y: targetPosition.y,
-                        z: targetPosition.z
-                    }, 1000)
-                    .easing(TWEEN.Easing.Quadratic.Out)
-                    .onUpdate(() => {
-                        dice.body.position.copy(this.position);
-                    })
-                    .start();
+                dice.mesh.callback = function () {
+                    console.log(1);
+                    selectedDice(dice);
                 }
 
             } else if (isHalfPi(euler.x)) {
                 showRollResults(4);
-                dice.mesh.callback = function () { console.log(4); }
+                dice.mesh.callback = function () { console.log(4); selectedDice(dice); }
             } else if (isMinusHalfPi(euler.x)) {
                 showRollResults(3);
-                dice.mesh.callback = function () { console.log(3); }
+                dice.mesh.callback = function () { console.log(3); selectedDice(dice); }
             } else if (isPiOrMinusPi(euler.x)) {
                 showRollResults(6);
-                dice.mesh.callback = function () { console.log(6); }
+                dice.mesh.callback = function () { console.log(6);  selectedDice(dice);}
             } else {
                 // landed on edge => wait to fall on side and fire the event again
                 dice.body.allowSleep = true;
             }
         } else if (isHalfPi(euler.z)) {
             showRollResults(2);
-            dice.mesh.callback = function () { console.log(2); }
+            dice.mesh.callback = function () { console.log(2); selectedDice(dice); }
         } else if (isMinusHalfPi(euler.z)) {
             showRollResults(5);
-            dice.mesh.callback = function () { console.log(5); }
+            dice.mesh.callback = function () { console.log(5); selectedDice(dice); }
         } else {
             // landed on edge => wait to fall on side and fire the event again
             dice.body.allowSleep = true;
@@ -429,6 +415,28 @@ function addDiceEvents(dice) {
     });
 
 }
+
+/*
+Selection des dés
+*/
+function selectedDice(dice) {
+    console.log(dice)
+    const targetPosition = new CANNON.Vec3(0, 0, -5);
+
+    new TWEEN.Tween(dice.mesh.position)
+        .to({
+            x: targetPosition.x,
+            y: targetPosition.y,
+            z: targetPosition.z
+        }, 1000)
+        .easing(TWEEN.Easing.Quadratic.Out)
+        .onUpdate(() => {
+            dice.body.position.copy(dice.mesh.position);
+        })
+        .start();
+}
+
+
 
 /*
 Résultats score en texte
