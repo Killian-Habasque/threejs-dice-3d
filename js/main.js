@@ -384,7 +384,24 @@ function addDiceEvents(dice) {
 
             if (isZero(euler.x)) {
                 showRollResults(1);
-                dice.mesh.callback = function () { console.log(1); }
+                dice.mesh.callback = function () { 
+                    console.log(1); 
+                    console.log(this)
+
+                    const targetPosition = new CANNON.Vec3(0, 0, -5); // Position cible en ligne
+
+                    new TWEEN.Tween(this.position)
+                    .to({
+                        x: targetPosition.x,
+                        y: targetPosition.y,
+                        z: targetPosition.z
+                    }, 1000)
+                    .easing(TWEEN.Easing.Quadratic.Out)
+                    .onUpdate(() => {
+                        dice.body.position.copy(this.position);
+                    })
+                    .start();
+                }
 
             } else if (isHalfPi(euler.x)) {
                 showRollResults(4);
@@ -484,12 +501,6 @@ function throwDice() {
 
 
     });
-    // while(scoreGlobal.length != 5) {
-    //     console.log(scoreGlobal.length)
-    // //     // setTimeout(() => {
-    // //     //     alignDiceInLine();
-    // //     // }, 2000);
-    // }
 
 }
 
