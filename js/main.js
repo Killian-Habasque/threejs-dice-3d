@@ -4,7 +4,6 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import * as BufferGeometryUtils from 'three/addons/utils/BufferGeometryUtils.js';
 import * as dat from 'dat.gui';
-// import * as TWEEN from 'https://cdnjs.cloudflare.com/ajax/libs/tween.js/18.6.4/tween.esm.min.js';
 import * as TWEEN from 'https://cdn.skypack.dev/@tweenjs/tween.js';
 
 
@@ -40,6 +39,10 @@ window.addEventListener('resize', updateSceneSize);
 // window.addEventListener('dblclick', throwDice);
 rollBtn.addEventListener('click', throwDice);
 var rectangleMesh;
+
+/*
+Création de la scène
+*/
 function initScene() {
 
     renderer = new THREE.WebGLRenderer({
@@ -142,6 +145,10 @@ function initScene() {
 
     render();
 }
+
+/*
+Création de rectangle pour collision
+*/
 function createOrUpdateRectangle() {
 
     const rectangleShape = new CANNON.Box(new CANNON.Vec3(params.rectangle.width * 0.5, params.rectangle.height * 0.5, 0.05));
@@ -185,6 +192,11 @@ function updateRectangle() {
     rectangleMesh.scale.set(params.rectangle.width, params.rectangle.height, 0.1);
     rectangleMesh.position.set(params.rectangle.positionX, params.rectangle.positionY, params.rectangle.positionZ);
 }
+
+
+/*
+Initialisation de la physique
+*/
 function initPhysics() {
     physicsWorld = new CANNON.World({
         allowSleep: true,
@@ -193,6 +205,10 @@ function initPhysics() {
     physicsWorld.defaultContactMaterial.restitution = .3;
 }
 
+
+/*
+Création du plane
+*/
 function createFloor() {
     const floor = new THREE.Mesh(
         new THREE.PlaneGeometry(1000, 1000),
@@ -214,6 +230,9 @@ function createFloor() {
     physicsWorld.addBody(floorBody);
 }
 
+/*
+Maillage du dés en regroupement Plane et Box geometry
+*/
 function createDiceMesh() {
     const boxMaterialOuter = new THREE.MeshStandardMaterial({
         color: 0xeeeeee,
@@ -237,6 +256,9 @@ function createDiceMesh() {
     return diceMesh;
 }
 
+/*
+Création des dés
+*/
 function createDice() {
     const mesh = diceMesh.clone();
     scene.add(mesh);
@@ -251,6 +273,10 @@ function createDice() {
 
     return { mesh, body };
 }
+
+/*
+Box geometry à l'exterieur des dés
+*/
 function createBoxGeometry() {
 
     let boxGeometry = new THREE.BoxGeometry(1, 1, 1, params.segments, params.segments, params.segments);
@@ -334,15 +360,12 @@ function createBoxGeometry() {
 
     boxGeometry.computeVertexNormals();
 
-
-    // Mon code
-    // renderer.domElement.addEventListener("click", onDblClick);
-    // function onDblClick(event){
-    //     alert('hi');
-    // }
     return boxGeometry;
 }
 
+/*
+Plane geometry à l'intérieur des dés
+*/
 function createInnerGeometry() {
     const baseGeometry = new THREE.PlaneGeometry(1 - 2 * params.edgeRadius, 1 - 2 * params.edgeRadius);
     const offset = .48;
@@ -356,6 +379,9 @@ function createInnerGeometry() {
     ], false);
 }
 
+/*
+Résultats en texte
+*/
 function addDiceEvents(dice) {
     dice.body.addEventListener('sleep', (e) => {
 
@@ -401,10 +427,12 @@ function addDiceEvents(dice) {
             dice.body.allowSleep = true;
         }
     });
-    // dice.body.callback = function() { console.log("test"); }
-    // dice.mesh.callback = function() { console.log("dsfsdfds"); }
+
 }
 
+/*
+Résultats score en texte
+*/
 function showRollResults(score) {
     if (scoreResult.innerHTML === '') {
         scoreResult.innerHTML += score;
@@ -413,15 +441,15 @@ function showRollResults(score) {
     }
 }
 
+/*
+Rendu de la scene
+*/
 function render() {
     physicsWorld.fixedStep();
 
     for (const dice of diceArray) {
         dice.mesh.position.copy(dice.body.position)
         dice.mesh.quaternion.copy(dice.body.quaternion)
-        // dice.callback = function() { console.log("test"); }
-        // console.log(dice.body.quaternion)
-        // dice.mesh.callback = function() { console.log("test"); }
     }
 
     TWEEN.update();
@@ -429,12 +457,19 @@ function render() {
     requestAnimationFrame(render);
 }
 
+/*
+Responsive scene
+*/
 function updateSceneSize() {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
 }
 
+
+/*
+Lancer dés 
+*/
 function throwDice() {
     scoreResult.innerHTML = '';
 
@@ -461,12 +496,15 @@ function throwDice() {
     });
     setTimeout(() => {
         alignDiceInLine();
-    }, 5000);
+    }, 4000);
 }
 
+/*
+Alignement des dés après le lancer
+*/
 function alignDiceInLine() {
-    const alignmentDuration = 1.5; 
-
+    const alignmentDuration = 1; 
+    const delayBetweenDice = 0.2;
     // Utilisation de Tween pour animer la position et la rotation des dés
     diceArray.forEach((dice, index) => {
         const targetPosition = new CANNON.Vec3(0 + index * 2, 0, 0); // Position cible en ligne
@@ -478,12 +516,14 @@ function alignDiceInLine() {
                 z: targetPosition.z
             }, alignmentDuration * 1000)
             .easing(TWEEN.Easing.Quadratic.Out)
+            .delay(index * delayBetweenDice * 1000)
             .start();
 
 
         new TWEEN.Tween({ y: dice.mesh.rotation.y })
             .to({ y: 0 }, alignmentDuration * 1000)
             .easing(TWEEN.Easing.Quadratic.Out)
+            .delay(index * delayBetweenDice * 1000)
             .onUpdate((obj) => {
                 dice.mesh.rotation.y = obj.y;
                 dice.mesh.rotation.reorder('YXZ'); 
