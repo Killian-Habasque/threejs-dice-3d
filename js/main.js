@@ -433,9 +433,44 @@ function selectedDice(dice) {
         .onUpdate(() => {
             dice.body.position.copy(dice.mesh.position);
         })
+        .onComplete(() => {
+            const selectedDiceIndex = diceArray.indexOf(dice);
+            realignDice(selectedDiceIndex);
+        })
         .start();
 }
 
+
+function realignDice(selectedDiceIndex) {
+    const alignmentDuration = 1;
+    const delayBetweenDice = 0.2;
+
+    diceArray.forEach((dice, index) => {
+        if (index !== selectedDiceIndex) {
+            const targetPosition = new CANNON.Vec3((index - (index > selectedDiceIndex ? 1 : 0)) * 2, 0, 0);
+            new TWEEN.Tween(dice.body.position)
+                .to({
+                    x: targetPosition.x,
+                    y: targetPosition.y,
+                    z: targetPosition.z
+                }, alignmentDuration * 1000)
+                .easing(TWEEN.Easing.Quadratic.Out)
+                .delay(Math.abs(index - selectedDiceIndex) * delayBetweenDice * 1000)
+                .start();
+
+            new TWEEN.Tween({ y: dice.mesh.rotation.y })
+                .to({ y: 0 }, alignmentDuration * 1000)
+                .easing(TWEEN.Easing.Quadratic.Out)
+                .delay(Math.abs(index - selectedDiceIndex) * delayBetweenDice * 1000)
+                .onUpdate((obj) => {
+                    dice.mesh.rotation.y = obj.y;
+                    dice.mesh.rotation.reorder('YXZ');
+                    dice.body.quaternion.copy(dice.mesh.quaternion);
+                })
+                .start();
+        }
+    });
+}
 
 
 /*
