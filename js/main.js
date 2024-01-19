@@ -30,7 +30,8 @@ const params = {
     },
 };
 let scoreGlobal = []
-const diceArray = [];
+let diceArray = [];
+let diceArraySelected = [];
 
 initPhysics();
 initScene();
@@ -102,9 +103,9 @@ function onDocumentMouseDown(event) {
     mouse.x = (event.clientX / renderer.domElement.clientWidth) * 2 - 1;
     mouse.y = - (event.clientY / renderer.domElement.clientHeight) * 2 + 1;
     raycaster.setFromCamera(mouse, camera);
-    console.log(scene.children);
+    // console.log(scene.children);
     var intersects = raycaster.intersectObjects(scene.children);
-    console.log(intersects);
+    // console.log(intersects);
     if (intersects.length > 0) {
         const selectedObject = intersects[0].object.parent;
         // console.log(selectedObject)
@@ -118,7 +119,7 @@ function onDocumentMouseDown(event) {
                     if (child.scale.x === 1.2) {
                         child.scale.set(1, 1, 1); // Changer l'échelle de l'enfant à 1
                     } else {
-                        console.log(selectedObject)
+                        // console.log(selectedObject)
 
                         child.scale.set(1.2, 1.2, 1.2); // Changer l'échelle de l'enfant à 1.2
                     }
@@ -416,12 +417,14 @@ function addDiceEvents(dice) {
 
 }
 
-/*
-Selection des dés
-*/
+
+// ...
+
+// Modifiez la fonction selectedDice
 function selectedDice(dice) {
-    console.log(dice)
-    const targetPosition = new CANNON.Vec3(0, 0, -5);
+    console.log(dice);
+
+    const targetPosition = new CANNON.Vec3(diceArraySelected.length * 2, 0, -5);
 
     new TWEEN.Tween(dice.mesh.position)
         .to({
@@ -435,40 +438,44 @@ function selectedDice(dice) {
         })
         .onComplete(() => {
             const selectedDiceIndex = diceArray.indexOf(dice);
-            realignDice(selectedDiceIndex);
+            diceArray.splice(selectedDiceIndex, 1);
+            diceArraySelected.push(dice);
+            console.log("______Dés_______");
+            console.log(diceArray);
+            console.log("______Dés Sélectionnés_______");
+            console.log(diceArraySelected);
+            realignDice();
         })
         .start();
 }
 
-
-function realignDice(selectedDiceIndex) {
+// Modifiez la fonction realignDice
+function realignDice() {
     const alignmentDuration = 1;
     const delayBetweenDice = 0.2;
 
     diceArray.forEach((dice, index) => {
-        if (index !== selectedDiceIndex) {
-            const targetPosition = new CANNON.Vec3((index - (index > selectedDiceIndex ? 1 : 0)) * 2, 0, 0);
-            new TWEEN.Tween(dice.body.position)
-                .to({
-                    x: targetPosition.x,
-                    y: targetPosition.y,
-                    z: targetPosition.z
-                }, alignmentDuration * 1000)
-                .easing(TWEEN.Easing.Quadratic.Out)
-                .delay(Math.abs(index - selectedDiceIndex) * delayBetweenDice * 1000)
-                .start();
+        const targetPosition = new CANNON.Vec3(index * 2, 0, 0);
+        new TWEEN.Tween(dice.body.position)
+            .to({
+                x: targetPosition.x,
+                y: targetPosition.y,
+                z: targetPosition.z
+            }, alignmentDuration * 1000)
+            .easing(TWEEN.Easing.Quadratic.Out)
+            .delay(index * delayBetweenDice * 1000)
+            .start();
 
-            new TWEEN.Tween({ y: dice.mesh.rotation.y })
-                .to({ y: 0 }, alignmentDuration * 1000)
-                .easing(TWEEN.Easing.Quadratic.Out)
-                .delay(Math.abs(index - selectedDiceIndex) * delayBetweenDice * 1000)
-                .onUpdate((obj) => {
-                    dice.mesh.rotation.y = obj.y;
-                    dice.mesh.rotation.reorder('YXZ');
-                    dice.body.quaternion.copy(dice.mesh.quaternion);
-                })
-                .start();
-        }
+        new TWEEN.Tween({ y: dice.mesh.rotation.y })
+            .to({ y: 0 }, alignmentDuration * 1000)
+            .easing(TWEEN.Easing.Quadratic.Out)
+            .delay(index * delayBetweenDice * 1000)
+            .onUpdate((obj) => {
+                dice.mesh.rotation.y = obj.y;
+                dice.mesh.rotation.reorder('YXZ');
+                dice.body.quaternion.copy(dice.mesh.quaternion);
+            })
+            .start();
     });
 }
 
@@ -479,7 +486,7 @@ Résultats score en texte
 function showRollResults(score) {
     scoreGlobal.push(score)
 
-    if (scoreGlobal.length == 5) {
+    if (scoreGlobal.length == diceArray.length) {
         alignDiceInLine();
     }
     if (scoreResult.innerHTML === '') {
