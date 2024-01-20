@@ -14,6 +14,8 @@ const scoreResult = document.querySelector('#score-result');
 const rollBtn = document.querySelector('#roll-btn');
 
 let isRealignmentInProgress = false;
+let isRealignmentInProgress2 = false;
+let canSelect = true;
 
 let renderer, scene, camera, diceMesh, physicsWorld;
 const diceDebugFolder = gui.addFolder('Dice Debug');
@@ -400,7 +402,7 @@ function addDiceEvents(dice) {
                 dice.mesh.callback = function () { console.log(3); selectedDice(dice); }
             } else if (isPiOrMinusPi(euler.x)) {
                 showRollResults(6);
-                dice.mesh.callback = function () { console.log(6);  selectedDice(dice);}
+                dice.mesh.callback = function () { console.log(6); selectedDice(dice); }
             } else {
                 // landed on edge => wait to fall on side and fire the event again
                 dice.body.allowSleep = true;
@@ -424,80 +426,103 @@ function addDiceEvents(dice) {
 
 // Modifiez la fonction selectedDice
 function selectedDice(dice) {
-    console.log(dice);
+    if (scoreGlobal.length == diceArray.length) {
+        console.log(dice);
 
-    const targetPosition = new CANNON.Vec3(diceArraySelected.length * 2, 0, -5);
+        if (!canSelect) {
+            return;
+        }
 
-    new TWEEN.Tween(dice.mesh.position)
-        .to({
-            x: targetPosition.x,
-            y: targetPosition.y,
-            z: targetPosition.z
-        }, 1000)
-        .easing(TWEEN.Easing.Quadratic.Out)
-        .onStart(() => {
-            const selectedDiceIndex = diceArray.indexOf(dice);
-            diceArray.splice(selectedDiceIndex, 1);
-            diceArraySelected.push(dice);
-            console.log("______Dés_______");
-            console.log(diceArray);
-            console.log("______Dés Sélectionnés_______");
-            console.log(diceArraySelected);
-        })
-        .onUpdate(() => {
-            dice.body.position.copy(dice.mesh.position);
-        })
-        .onComplete(() => {
-            if (!isRealignmentInProgress) {
-                isRealignmentInProgress = true;
-                realignDice(() => {
-                    isRealignmentInProgress = false;
-                });
-            }
-        })
-        .start();
+        const targetPosition = new CANNON.Vec3(diceArraySelected.length * 2, 0, -5);
+
+        new TWEEN.Tween(dice.mesh.position)
+            .to({
+                x: targetPosition.x,
+                y: targetPosition.y,
+                z: targetPosition.z
+            }, 500)
+            .easing(TWEEN.Easing.Quadratic.Out)
+            .onStart(() => {
+                const selectedDiceIndex = diceArray.indexOf(dice);
+                diceArray.splice(selectedDiceIndex, 1);
+                diceArraySelected.push(dice);
+                console.log("______Dés_______");
+                console.log(diceArray);
+                console.log("______Dés Sélectionnés_______");
+                console.log(diceArraySelected);
+            })
+            .onUpdate(() => {
+                dice.body.position.copy(dice.mesh.position);
+            })
+            .onComplete(() => {
+                if (!isRealignmentInProgress) {
+                    isRealignmentInProgress = true;
+                    realignDice(() => {
+                        isRealignmentInProgress = false;
+                    });
+                }
+            })
+            .start();
+
+        canSelect = false;
+        setTimeout(() => {
+            canSelect = true;
+        }, 1000);
 
         dice.mesh.callback = function () { unselectedDice(dice); }
+    }
 }
 
 function unselectedDice(dice) {
-    const targetPosition = new CANNON.Vec3((diceArray.length) * 2, 0, 0);
+    if (scoreGlobal.length == diceArray.length) {
 
-    new TWEEN.Tween(dice.mesh.position)
-        .to({
-            x: targetPosition.x,
-            y: targetPosition.y,
-            z: targetPosition.z
-        }, 1000)
-        .easing(TWEEN.Easing.Quadratic.Out)
-        .onStart(() => {
-            const selectedDiceIndex = diceArraySelected.indexOf(dice);
-            diceArraySelected.splice(selectedDiceIndex, 1);
-            diceArray.push(dice);
-            console.log("______Dés_______");
-            console.log(diceArray);
-            console.log("______Dés Sélectionnés_______");
-            console.log(diceArraySelected);
-        })
-        .onUpdate(() => {
-            dice.body.position.copy(dice.mesh.position);
-        })
-        .onComplete(() => {
-            if (!isRealignmentInProgress) {
-                isRealignmentInProgress = true;
-                realignDiceSelected(() => {
-                    isRealignmentInProgress = false;
-                });
-            }
-        })
-        .start();
+        if (!canSelect) {
+            return;
+        }
 
-    dice.mesh.callback = function () { selectedDice(dice); };
+        const targetPosition = new CANNON.Vec3((diceArray.length) * 2, 0, 0);
+
+        new TWEEN.Tween(dice.mesh.position)
+            .to({
+                x: targetPosition.x,
+                y: targetPosition.y,
+                z: targetPosition.z
+            }, 500)
+            .easing(TWEEN.Easing.Quadratic.Out)
+            .onStart(() => {
+                const selectedDiceIndex = diceArraySelected.indexOf(dice);
+                diceArraySelected.splice(selectedDiceIndex, 1);
+                diceArray.push(dice);
+                console.log("______Dés_______");
+                console.log(diceArray);
+                console.log("______Dés Sélectionnés_______");
+                console.log(diceArraySelected);
+            })
+            .onUpdate(() => {
+                dice.body.position.copy(dice.mesh.position);
+            })
+            .onComplete(() => {
+                if (!isRealignmentInProgress2) {
+                    isRealignmentInProgress2 = true;
+                    realignDiceSelected(() => {
+                        isRealignmentInProgress2 = false;
+                    });
+                }
+            })
+            .start();
+
+        canSelect = false;
+        setTimeout(() => {
+            canSelect = true;
+        }, 1000);
+
+        dice.mesh.callback = function () { selectedDice(dice); };
+    }
 }
 
 function realignDiceSelected(callback) {
-    const alignmentDuration = 1;
-    const delayBetweenDice = 0.2;
+    const alignmentDuration = 0.3;
+    const delayBetweenDice = 0.1;
     let completedCount = 0;
 
     diceArraySelected.forEach((dice, index) => {
@@ -519,7 +544,7 @@ function realignDiceSelected(callback) {
             })
             .start();
 
-            new TWEEN.Tween({ y: dice.mesh.rotation.y })
+        new TWEEN.Tween({ y: dice.mesh.rotation.y })
             .to({ y: 0 }, alignmentDuration * 1000)
             .easing(TWEEN.Easing.Quadratic.Out)
             .delay(index * delayBetweenDice * 1000)
@@ -533,8 +558,8 @@ function realignDiceSelected(callback) {
 }
 
 function realignDice(callback) {
-    const alignmentDuration = 1;
-    const delayBetweenDice = 0.2;
+    const alignmentDuration = 0.3;
+    const delayBetweenDice = 0.1;
     let completedCount = 0;
     console.log(isRealignmentInProgress)
     diceArray.forEach((dice, index) => {
@@ -624,6 +649,7 @@ function throwDice() {
     scoreGlobal = [];
 
     isRealignmentInProgress = false;
+    isRealignmentInProgress2 = false;
 
     diceArray.forEach((d, dIdx) => {
 
