@@ -12,7 +12,9 @@ const gui = new dat.GUI();
 const canvasEl = document.querySelector('#canvas');
 const scoreResult = document.querySelector('#score-result');
 const rollBtn = document.querySelector('#roll-btn');
+
 let isRealignmentInProgress = false;
+
 let renderer, scene, camera, diceMesh, physicsWorld;
 const diceDebugFolder = gui.addFolder('Dice Debug');
 const params = {
@@ -480,11 +482,55 @@ function unselectedDice(dice) {
         .onUpdate(() => {
             dice.body.position.copy(dice.mesh.position);
         })
+        .onComplete(() => {
+            if (!isRealignmentInProgress) {
+                isRealignmentInProgress = true;
+                realignDiceSelected(() => {
+                    isRealignmentInProgress = false;
+                });
+            }
+        })
         .start();
 
     dice.mesh.callback = function () { selectedDice(dice); };
 }
 
+function realignDiceSelected(callback) {
+    const alignmentDuration = 1;
+    const delayBetweenDice = 0.2;
+    let completedCount = 0;
+
+    diceArraySelected.forEach((dice, index) => {
+        console.log(diceArraySelected)
+        const targetPosition = new CANNON.Vec3(index * 2, 0, -5);
+        new TWEEN.Tween(dice.body.position)
+            .to({
+                x: targetPosition.x,
+                y: targetPosition.y,
+                z: targetPosition.z
+            }, alignmentDuration * 1000)
+            .easing(TWEEN.Easing.Quadratic.Out)
+            .delay(index * delayBetweenDice * 1000)
+            .onComplete(() => {
+                completedCount++;
+                if (completedCount === diceArraySelected.length) {
+                    callback();
+                }
+            })
+            .start();
+
+            new TWEEN.Tween({ y: dice.mesh.rotation.y })
+            .to({ y: 0 }, alignmentDuration * 1000)
+            .easing(TWEEN.Easing.Quadratic.Out)
+            .delay(index * delayBetweenDice * 1000)
+            .onUpdate((obj) => {
+                dice.mesh.rotation.y = obj.y;
+                dice.mesh.rotation.reorder('YXZ');
+                dice.body.quaternion.copy(dice.mesh.quaternion);
+            })
+            .start();
+    });
+}
 
 function realignDice(callback) {
     const alignmentDuration = 1;
@@ -547,6 +593,10 @@ function render() {
     physicsWorld.fixedStep();
 
     for (const dice of diceArray) {
+        dice.mesh.position.copy(dice.body.position)
+        dice.mesh.quaternion.copy(dice.body.quaternion)
+    }
+    for (const dice of diceArraySelected) {
         dice.mesh.position.copy(dice.body.position)
         dice.mesh.quaternion.copy(dice.body.quaternion)
     }
